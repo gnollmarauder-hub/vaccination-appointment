@@ -1,6 +1,6 @@
 module.exports = {
   loginInfo: {
-    mobile: '*****',
-    password: '******'
+    mobile: '13739251402',
+    password: '565103dR'
   }
 }
