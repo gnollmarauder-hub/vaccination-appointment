@@ -1,19 +1,23 @@
 const puppeteer = require('puppeteer');
 const config = require('./config.js');
 const fs = require('fs');
+let page = null
+let btn_position = null
+let times = 0 // 执行重新滑动的次数
+const distanceError = [-10, 2, 3, 5] // 距离误差
+let timeout = function (delay) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      try {
+        resolve(1)
+      } catch (e) {
+        reject(0)
+      }
+    }, delay);
+  })
+}
 
-(async () => {
-  let timeout = function (delay) {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        try {
-          resolve(1)
-        } catch (e) {
-          reject(0)
-        }
-      }, delay);
-    })
-  }
+async function run () {
   const browser = await (puppeteer.launch({
     //设置超时时间
     timeout: 15000,
@@ -24,7 +28,7 @@ const fs = require('fs');
     // 关闭headless模式, 不会打开浏览器
     headless: false
   }));
-  const page = await browser.newPage();
+  page = await browser.newPage();
   await page.goto('http://www.ah12320.com/jsp/login.jsp')
   page.on('load', () => {
 
@@ -40,7 +44,7 @@ const fs = require('fs');
   const password = await page.$('#passwordHint')
   password.focus()
   await page.keyboard.type(config.loginInfo.password)
-  // 验证码
+  // 获取验证
   for (i = 0; i < 100000000; i++) {
     a = i
   }
@@ -48,118 +52,20 @@ const fs = require('fs');
   const abc = await page.$('.gt_cut_fullbg')
   sliderBtn.click({ delay: 3000 })
   await timeout(2000)
-  abc.screenshot({ path: 'fullBg.png', type: 'png' })
+  await abc.screenshot({ path: 'fullBg.png', type: 'png' })
   await timeout(2000)
   sliderBtn.click({ delay: 1000 })
-  abc.screenshot({ path: 'gapBg.png', type: 'png' })
-  const fullBgBuff = Buffer.from(fs.readFileSync('./fullBg.png'), 'base64')
-  const gapBgBuff = Buffer.from(fs.readFileSync('./gapBg.png'), 'base64')
-
-  await page.evaluate(({ fullBgBuff, gapBgBuff }) => {
-    console.log(fullBgBuff)
-    let fullBgDom = document.createElement('img')
-    fullBgDom.setAttribute('src', fullBgBuff)
-    fullBgDom.setAttribute('id', 'fullBg')
-    let gapBgDom = document.createElement('img')
-    gapBgDom.setAttribute('src', gapBgBuff)
-    gapBgDom.setAttribute('id', 'gapBg')
-    document.body.appendChild(fullBgDom)
-    document.body.appendChild(gapBgDom)
-  }, { fullBgBuff, gapBgBuff })
-  // const captchaDom = await page.$eval('.gt_cut_fullbg_slice', function (el) {
-  //   return el.getAttribute('style')
-  // })
-  // await page.evaluate(captchaDom => {
-
-  //   let fullBgDom = document.createElement('img')
-  //   let canvasDom = document.createElement('canvas')
-  //   fullBgDom.setAttribute('id', 'img')
-  //   //width="200" height="200"
-  //   //background-image: url("http://static.geetest.com/pictures/gt/1c255d166/1c255d166.webp"); background-position: -157px -80px;
-  //   fullBgDom.setAttribute('src', captchaDom.match(/http:\/\/static.geetest.com\/pictures\/gt\/[a-zA-z0-9]+\/[a-zA-z0-9]+.webp/))
-  //   canvasDom.setAttribute('id', 'imageC')
-  //   document.body.appendChild(fullBgDom)
-  //   document.body.appendChild(canvasDom)
-  //   var canvas = document.getElementById('imageC')
-  //   fullBgDom = document.getElementById('img')
-  //   fullBgDom.onload = function (options) {
-  //     console.log(options, 'options')
-  //     var ctx = canvas.getContext('2d')
-  //     ctx.drawImage(fullBgDom, 0, 0, 260, 180)
-  //     setTimeout(() => {
-  //       clickCropImage()
-  //     }, 3000)
-  //   }
-  //   function clickCropImage () {
-  //     const numberX = 26
-  //     const numberY = 2
-  //     const splaceX = 10
-  //     const splaceY = 80
-  //     var canvas = document.getElementById('imageC');
-  //     //  获取画布大小，判断画布大小
-  //     var canvasH = canvas.clientHeight;
-  //     var canvasW = canvas.clientWidth;
-  //     //  将图片等分
-  //     for (var x = 0; x < numberX; x++) {
-  //       for (var y = 0; y < numberY; y++) {
-  //         var location = {
-  //           'x': x * canvasW / numberX - splaceX,
-  //           'y': y * canvasH / numberY - splaceY,
-  //           'Dx': x * canvasW / numberX + canvasW / numberX,
-  //           'Dy': y * canvasH / numberY + canvasH / numberY,
-  //           'locationOption': (x + 1).toString() + (y + 1).toString(),
-  //         };
-  //         // locationArr.push(location);
-  //         cropImage(canvas, (x * canvasW / numberX) - splaceX, (y * canvasH / numberY) - splaceY, canvasW / numberX, canvasH / numberY);
-  //       };
-  //     };
-  //     canvasComimgCreated = false;
-  //     divComimgCreated = false;
-  //   }
-
-  //   function cropImage (targetCanvas, x, y, width, height) {
-  //     var targetctx = targetCanvas.getContext('2d');
-  //     var targetctxImageData = targetctx.getImageData(x, y, width, height);
-  //     // sx, sy, sWidth, sHeight
-  //     var c = document.createElement('canvas');
-  //     var ctx = c.getContext('2d');
-  //     c.width = width;
-  //     c.height = height;
-  //     ctx.rect(0, 0, width, height);
-  //     ctx.fillStyle = 'white';
-  //     ctx.fill();
-  //     ctx.putImageData(targetctxImageData, 0, 0);
-  //     // imageData, dx, dy
-  //     // 创建img 块
-  //     var img = document.createElement('img');
-  //     img.src = c.toDataURL('image/jpeg', 0.92);
-  //     document.body.appendChild(img);
-  //   }
-  // }, captchaDom)
-  // 登陆
-  // 预约
-  // await page.goto('http://www.ah12320.com/jsp/vaccination/scheduleInfo.jsp?shopId=3401231301');
-  // await page.waitForSelector('.book .sele');
-  // await page.screenshot({
-  //   path: 'jianshu.png',
-  //   type: 'png',
-  //   // quality: 100, 只对jpg有效
-  //   fullPage: true,
-  //   // 指定区域截图，clip和fullPage两者只能设置一个
-  //   // clip: {
-  //   //   x: 0,
-  //   //   y: 0,
-  //   //   width: 1000,
-  //   //   height: 40
-  //   // }
-  // });
+  await abc.screenshot({ path: 'gapBg.png', type: 'png' })
+  // 获取滑块位置
+  btn_position = await getBtnPosition('.gt_slider_knob');
+  drag(null)
   // browser.close();
-})();
+}
 
 /**
  * 计算滑块位置
 */
-async function getBtnPosition (id, page) {
+async function getBtnPosition (id) {
   const btn_position = await page.evaluate((id) => {
     const { clientWidth, clientHeight } = document.querySelector(id)
     return { btn_left: clientWidth / 2 - 22, btn_top: clientHeight / 2 + 22 }
@@ -167,3 +73,135 @@ async function getBtnPosition (id, page) {
   return btn_position;
 }
 
+/**
+ * 尝试滑动按钮
+ * @param distance 滑动距离
+ * */
+async function tryValidation (distance) {
+  //将距离拆分成两段，模拟正常人的行为
+  const distance1 = distance - 10
+  const distance2 = 10
+
+  page.mouse.click(btn_position.btn_left, btn_position.btn_top, { delay: 2000 })
+  console.log('click')
+  page.mouse.down(btn_position.btn_left, btn_position.btn_top)
+  console.log('down')
+  page.mouse.move(btn_position.btn_left + distance1, btn_position.btn_top, { steps: 30 })
+  console.log('move')
+  await timeout(800);
+  page.mouse.move(btn_position.btn_left + distance1 + distance2, btn_position.btn_top, { steps: 20 })
+  await timeout(800);
+  page.mouse.up()
+  await timeout(4000);
+
+  // 判断是否验证成功
+  const isSuccess = await page.evaluate(() => {
+    return document.querySelector('.gt_info_type') && document.querySelector('.gt_info_type').innerHTML
+  })
+  await timeout(1000);
+  // 判断是否需要重新计算距离
+  const reDistance = await page.evaluate(() => {
+    return document.querySelector('.gt_info_content') && document.querySelector('.gt_info_content').innerHTML
+  })
+  await timeout(1000);
+  return { isSuccess: isSuccess === '验证成功', reDistance: reDistance.includes('怪物吃了拼图') }
+}
+
+/**
+ * 拖动滑块
+ * @param distance 滑动距离
+ * */
+async function drag (distance) {
+  distance = distance || await calculateDistance()
+  const result = await tryValidation(distance.min)
+  console.log(result, 'result')
+  if (result.isSuccess) {
+    await timeout(1000);
+    //登录
+    console.log('验证成功')
+    page.click('#modal-member-login button')
+  } else if (result.reDistance) {
+    console.log('重新计算滑距离录，重新滑动')
+    times = 0
+    await drag(null)
+  } else {
+    if (distanceError[times]) {
+      times++
+      console.log('重新滑动')
+      await drag({ min: distance.max, max: distance.max + distanceError[times] })
+    } else {
+      console.log('滑动失败')
+      times = 0
+      run()
+    }
+  }
+}
+/**
+ * 计算按钮需要滑动的距离 
+ * */
+async function calculateDistance () {
+  const fullBgBuff = Buffer.from(fs.readFileSync('./fullBg.png'), 'binary').toString('base64')
+  const gapBgBuff = Buffer.from(fs.readFileSync('./gapBg.png'), 'binary').toString('base64')
+
+  //
+  return await page.evaluate(async ({ fullBgBuff, gapBgBuff }) => {
+    let timeout = function (delay) {
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          try {
+            resolve(1)
+          } catch (e) {
+            reject(0)
+          }
+        }, delay);
+      })
+    }
+    let fullBgDom = document.createElement('canvas')
+    let fullBgCtx = fullBgDom.getContext('2d')
+    const fullBgImage = new Image()
+    fullBgDom.setAttribute('id', 'fullBg')
+    fullBgImage.src = `data:image/png;base64,${fullBgBuff}`
+    fullBgImage.onload = () => {
+      fullBgCtx.drawImage(fullBgImage, 0, 0)
+    }
+    document.body.appendChild(fullBgDom)
+
+    // 创建canvas
+    let gapBgDom = document.createElement('canvas')
+    let gapBgCtx = gapBgDom.getContext('2d')
+    let gapImage = new Image()
+    gapImage.src = `data:image/png;base64,${gapBgBuff}`
+    gapImage.onload = () => {
+      gapBgCtx.drawImage(gapImage, 0, 0)
+    }
+    gapBgDom.setAttribute('id', 'gapBg')
+    document.body.appendChild(gapBgDom)
+    await timeout(3000)
+    // abc
+    const ctx1 = document.querySelector('#fullBg'); // 完成图片
+    const ctx2 = document.querySelector('#gapBg');  // 带缺口图片
+    console.log(ctx1, 'fuck-ctx1')
+    const pixelDifference = 30; // 像素差
+    let res = []; // 保存像素差较大的x坐标
+    // 对比像素
+    for (let i = 57; i < 260; i++) {
+      for (let j = 1; j < 160; j++) {
+        const imgData1 = ctx1.getContext("2d").getImageData(1 * i, 1 * j, 1, 1)
+        const imgData2 = ctx2.getContext("2d").getImageData(1 * i, 1 * j, 1, 1)
+        const data1 = imgData1.data;
+        const data2 = imgData2.data;
+        const res1 = Math.abs(data1[0] - data2[0]);
+        const res2 = Math.abs(data1[1] - data2[1]);
+        const res3 = Math.abs(data1[2] - data2[2]);
+        if (!(res1 < pixelDifference && res2 < pixelDifference && res3 < pixelDifference)) {
+          if (!res.includes(i)) {
+            res.push(i);
+          }
+        }
+      }
+    }
+    // 返回像素差最大值跟最小值，经过调试最小值往左小7像素，最大值往左54像素
+    return { min: res[0] - 7, max: res[res.length - 1] - 54 }
+  }, { fullBgBuff, gapBgBuff })
+}
+run()
