@@ -45,16 +45,14 @@ async function run () {
   password.focus()
   await page.keyboard.type(config.loginInfo.password)
   // 获取验证
-  for (i = 0; i < 100000000; i++) {
-    a = i
-  }
+  await timeout(5000)
   const sliderBtn = await page.$('.gt_slider_knob')
   const abc = await page.$('.gt_cut_fullbg')
-  sliderBtn.click({ delay: 3000 })
-  await timeout(2000)
+  sliderBtn.hover({ delay: 5000 })
+  await timeout(5000)
   await abc.screenshot({ path: 'fullBg.png', type: 'png' })
-  await timeout(2000)
-  sliderBtn.click({ delay: 1000 })
+  await timeout(5000)
+  sliderBtn.click({ delay: 5000 })
   await abc.screenshot({ path: 'gapBg.png', type: 'png' })
   // 获取滑块位置
   btn_position = await getBtnPosition('.gt_slider_knob');
@@ -67,8 +65,9 @@ async function run () {
 */
 async function getBtnPosition (id) {
   const btn_position = await page.evaluate((id) => {
-    const { clientWidth, clientHeight } = document.querySelector(id)
-    return { btn_left: clientWidth / 2 - 22, btn_top: clientHeight / 2 + 22 }
+    const fuck = document.querySelector(id)
+    const fuckRect = fuck.getBoundingClientRect()
+    return { btn_left: fuckRect.left + 22, btn_top: fuckRect.top + 22 }
   }, id)
   return btn_position;
 }
@@ -113,7 +112,8 @@ async function tryValidation (distance) {
  * */
 async function drag (distance) {
   distance = distance || await calculateDistance()
-  const result = await tryValidation(distance.min)
+  console.log(distance, 'distance')
+  const result = await tryValidation(distance.max - distance.min)
   console.log(result, 'result')
   if (result.isSuccess) {
     await timeout(1000);
@@ -178,8 +178,8 @@ async function calculateDistance () {
     document.body.appendChild(gapBgDom)
     await timeout(3000)
     // abc
-    const ctx1 = document.querySelector('#fullBg'); // 完成图片
-    const ctx2 = document.querySelector('#gapBg');  // 带缺口图片
+    const ctx1 = document.querySelector('#fullBg') // 完成图片
+    const ctx2 = document.querySelector('#gapBg')  // 带缺口图片
     console.log(ctx1, 'fuck-ctx1')
     const pixelDifference = 30; // 像素差
     let res = []; // 保存像素差较大的x坐标
@@ -201,6 +201,7 @@ async function calculateDistance () {
       }
     }
     // 返回像素差最大值跟最小值，经过调试最小值往左小7像素，最大值往左54像素
+    console.log(res, 'fdasfafdasf')
     return { min: res[0] - 7, max: res[res.length - 1] - 54 }
   }, { fullBgBuff, gapBgBuff })
 }
