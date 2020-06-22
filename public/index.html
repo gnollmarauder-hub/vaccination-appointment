@@ -47,9 +47,10 @@
             const data2 = imgData2.data
             data1.map((item, index) => {
               let disPixel = item - data2[index]
-              // if (disPixel > 20) {
-              res.push({ i, j, data1, data2 })
-              // }
+              if (disPixel > 20) {
+                res.push({ i, j, data1, data2 })
+                continue
+              }
             })
           }
         }
