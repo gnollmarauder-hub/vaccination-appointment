@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script>
+      let fullBgDom = document.createElement('canvas')
+      let fullBgCtx = fullBgDom.getContext('2d')
+      const fullBgImage = new Image()
+      fullBgDom.setAttribute('id', 'fullBg')
+      fullBgImage.src = './fullBg.png'
+      fullBgImage.onload = () => {
+        fullBgCtx.drawImage(fullBgImage, 0, 0)
+      }
+      document.body.appendChild(fullBgDom)
+
+      // 创建canvas
+      let gapBgDom = document.createElement('canvas')
+      let gapBgCtx = gapBgDom.getContext('2d')
+      let gapImage = new Image()
+      gapImage.src = './gapBg.png'
+      gapImage.onload = () => {
+        gapBgCtx.drawImage(gapImage, 0, 0)
+      }
+      gapBgDom.setAttribute('id', 'gapBg')
+      document.body.appendChild(gapBgDom)
+      // abc
+      setTimeout(() => {
+        const ctx1 = document.querySelector('#fullBg') // 完成图片
+        const ctx2 = document.querySelector('#gapBg') // 带缺口图片
+        const pixelDifference = 100 // 像素差
+        let res = [] // 保存像素差较大的x坐标
+        let temp = 0
+        // 对比像素
+        for (let i = 1; i < 260; i++) {
+          for (let j = 1; j < 160; j++) {
+            const imgData1 = ctx1
+              .getContext('2d')
+              .getImageData(1 * i, 1 * j, 1, 1)
+            const imgData2 = ctx2
+              .getContext('2d')
+              .getImageData(1 * i, 1 * j, 1, 1)
+            const data1 = imgData1.data
+            const data2 = imgData2.data
+            data1.map((item, index) => {
+              let disPixel = item - data2[index]
+              // if (disPixel > 20) {
+              res.push({ i, j, data1, data2 })
+              // }
+            })
+          }
+        }
+        const dis = []
+        console.log(res, 'fuck you')
+        for (let i = res[0].i; i < 260; i++) {
+          const imgData1 = ctx1
+            .getContext('2d')
+            .getImageData(1 * i, 1 * res[0].j + 5, 1, 1)
+          const imgData2 = ctx2
+            .getContext('2d')
+            .getImageData(1 * i, 1 * res[0].j + 5, 1, 1)
+          const data1 = imgData1.data
+          const data2 = imgData2.data
+          const res1 = Math.abs(data1[0] - data2[0])
+          const res2 = Math.abs(data1[1] - data2[1])
+          const res3 = Math.abs(data1[2] - data2[2])
+          if (
+            !(
+              res1 < pixelDifference &&
+              res2 < pixelDifference &&
+              res3 < pixelDifference
+            )
+          ) {
+            dis.push(i)
+          }
+        }
+        // 断档的
+        let min = 0
+        let max = 0
+        for (let k = 0; k < dis.length - 1; k++) {
+          if (dis[k + 1] - dis[k] > 30) {
+            min = dis[k]
+            max = dis[k + 1]
+            break
+          }
+        }
+      }, 3000)
+    </script>
+  </body>
+</html>

@@ -181,8 +181,28 @@ async function calculateDistance () {
     const ctx1 = document.querySelector('#fullBg') // 完成图片
     const ctx2 = document.querySelector('#gapBg')  // 带缺口图片
     console.log(ctx1, 'fuck-ctx1')
-    const pixelDifference = 30; // 像素差
+    const pixelDifference = 80; // 像素差
     let res = []; // 保存像素差较大的x坐标
+    let temp = 0
+    const getPixelInfo = (imageData, x, y) => {
+
+      let R = y * imageData.width * 4 + 4 * x;
+      let G = R + 1;
+      let B = R + 2;
+      let A = R + 3;
+
+      let orderArr = [R, G, B, A];
+      let pixelInfo = {
+        R,
+        G,
+        B,
+        A,
+        orderArr
+      };
+
+      return pixelInfo;
+    }
+
     // 对比像素
     for (let i = 57; i < 260; i++) {
       for (let j = 1; j < 160; j++) {
@@ -190,19 +210,62 @@ async function calculateDistance () {
         const imgData2 = ctx2.getContext("2d").getImageData(1 * i, 1 * j, 1, 1)
         const data1 = imgData1.data;
         const data2 = imgData2.data;
-        const res1 = Math.abs(data1[0] - data2[0]);
-        const res2 = Math.abs(data1[1] - data2[1]);
-        const res3 = Math.abs(data1[2] - data2[2]);
-        if (!(res1 < pixelDifference && res2 < pixelDifference && res3 < pixelDifference)) {
-          if (!res.includes(i)) {
-            res.push(i);
+        let pixelArr = getPixelInfo(imgData1, i, j).orderArr;
+        // const res1 = Math.abs(data1[0] - data2[0]);
+        // const res2 = Math.abs(data1[1] - data2[1]);
+        // const res3 = Math.abs(data1[2] - data2[2]);
+
+        // if (!(res1 < pixelDifference && res2 < pixelDifference && res3 < pixelDifference)) {
+        //   // 恒定j值
+        //   if (!res.includes(i)) {
+        //     res.push({ i, j });
+        //   }
+        //   break
+        // }
+        pixelArr.map(order => {
+          let disPixel = imgData1.data[order] - imgData2.data[order];
+          console.log(disPixel, 'fuck res')
+          if (disPixel ** 2 > 100) {
+            res.push({ i, j })
+            console.log(res, 'fuck res')
           }
+        });
+      }
+    }
+    return { min: 1, max: 22 }
+    const dis = []
+    for (let i = res[0].i; i < 260; i++) {
+      const imgData1 = ctx1.getContext("2d").getImageData(1 * i, 1 * res[0].j + 5, 1, 1)
+      const imgData2 = ctx2.getContext("2d").getImageData(1 * i, 1 * res[0].j + 5, 1, 1)
+      const data1 = imgData1.data;
+      const data2 = imgData2.data;
+      const res1 = Math.abs(data1[0] - data2[0]);
+      const res2 = Math.abs(data1[1] - data2[1]);
+      const res3 = Math.abs(data1[2] - data2[2]);
+      orderArr.map(order => {
+        let disPixel = imgData1.data[order] - imgData2.data[order];
+        if (disPixel ** 2 > 100) {
+          dis.push(i)
         }
+      });
+      if (!(res1 < pixelDifference && res2 < pixelDifference && res3 < pixelDifference)) {
+        dis.push(i)
+      }
+    }
+    console.log
+    // 断档的
+    let min = 0
+    let max = 0
+    console.log(dis, 'dis')
+    for (let k = 0; k < dis.length - 1; k++) {
+      if (dis[k + 1] - dis[k] > 10) {
+        min = dis[k]
+        max = dis[k + 1]
+        break
       }
     }
     // 返回像素差最大值跟最小值，经过调试最小值往左小7像素，最大值往左54像素
-    console.log(res, 'fdasfafdasf')
-    return { min: res[0] - 7, max: res[res.length - 1] - 54 }
+    return { min, max }
   }, { fullBgBuff, gapBgBuff })
 }
 run()
