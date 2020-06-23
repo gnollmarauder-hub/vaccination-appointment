@@ -31,7 +31,7 @@
       setTimeout(() => {
         const ctx1 = document.querySelector('#fullBg') // 完成图片
         const ctx2 = document.querySelector('#gapBg') // 带缺口图片
-        const pixelDifference = 100 // 像素差
+        const pixelDifference = 10 // 像素差
         let res = [] // 保存像素差较大的x坐标
         let temp = 0
         // 对比像素
@@ -45,13 +45,18 @@
               .getImageData(1 * i, 1 * j, 1, 1)
             const data1 = imgData1.data
             const data2 = imgData2.data
-            data1.map((item, index) => {
-              let disPixel = item - data2[index]
-              if (disPixel > 20) {
-                res.push({ i, j, data1, data2 })
-                continue
-              }
-            })
+            const res1 = Math.abs(data1[0] - data2[0])
+            const res2 = Math.abs(data1[1] - data2[1])
+            const res3 = Math.abs(data1[2] - data2[2])
+            if (
+              !(
+                res1 < pixelDifference &&
+                res2 < pixelDifference &&
+                res3 < pixelDifference
+              )
+            ) {
+              res.push({ i, j, data1, data2 })
+            }
           }
         }
         const dis = []

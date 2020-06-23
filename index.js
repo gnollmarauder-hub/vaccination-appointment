@@ -1,3 +1,4 @@
+const _ = require('lodash')
 const puppeteer = require('puppeteer');
 const config = require('./config.js');
 const fs = require('fs');
@@ -77,19 +78,67 @@ async function getBtnPosition (id) {
  * @param distance 滑动距离
  * */
 async function tryValidation (distance) {
-  //将距离拆分成两段，模拟正常人的行为
+  const reduce = [].reduce
+  const count = 30 // 小编分成30步进行滑动
   const distance1 = distance - 10
   const distance2 = 10
+  const steps = slide_list(distance)
+  console.log(steps, 'steps111')
 
+  function slide_list (total_length) {
+    // '''
+    // 拿到移动轨迹，模仿人的滑动行为，先匀加速后匀减速
+    // 匀变速运动基本公式：
+    // ①v=v0+at
+    // ②s=v0t+½at²
+    // ③v²-v0²=2as
+    // :param total_length: 需要移动的距离
+    // :return: 每段移动的距离列表
+    // '''
+    // #初速度
+    let v = 0
+    // #单位时间为0.3s来统计轨迹，轨迹即0.3内的位移
+    let t = 1
+    // #位移/轨迹列表，列表内的一个元素代表一个T时间单位的位移,t越大，每次移动的距离越大
+    let slide_result = []
+    // #当前的位移
+    let current = 0
+    // #到达mid值开始减速
+    let mid = total_length * 4 / 5
+
+    while (current < total_length) {
+      if (current < mid) {
+        // # 加速度越小，单位时间的位移越小,模拟的轨迹就越多越详细
+        a = 2
+      }
+      else {
+        a = -3
+      }
+      // #初速度
+      v0 = v
+      // #0.2秒时间内的位移
+      s = v0 * t + 0.5 * a * (t ** 2)
+      // #当前的位置
+      current += s
+      // #添加到轨迹列表
+      slide_result.push(Math.round(s))
+
+      // #速度已经达到v,该速度作为下次的初速度
+      v = v0 + a * t
+    }
+    return slide_result
+  }
   page.mouse.click(btn_position.btn_left, btn_position.btn_top, { delay: 2000 })
   console.log('click')
   page.mouse.down(btn_position.btn_left, btn_position.btn_top)
   console.log('down')
-  page.mouse.move(btn_position.btn_left + distance1, btn_position.btn_top, { steps: 30 })
-  console.log('move')
-  await timeout(800);
-  page.mouse.move(btn_position.btn_left + distance1 + distance2, btn_position.btn_top, { steps: 20 })
-  await timeout(800);
+  let path = 0;
+  for (let i = 0; i < steps.length; i++) {
+    path += steps[i]
+    await page.mouse.move(btn_position.btn_left + path, btn_position.btn_top, { steps: 30 })
+    await timeout(800);
+
+  }
   page.mouse.up()
   await timeout(4000);
 
@@ -112,8 +161,7 @@ async function tryValidation (distance) {
  * */
 async function drag (distance) {
   distance = distance || await calculateDistance()
-  console.log(distance, 'distance')
-  const result = await tryValidation(distance.max - distance.min)
+  const result = await tryValidation(distance.min)
   console.log(result, 'result')
   if (result.isSuccess) {
     await timeout(1000);
@@ -181,27 +229,8 @@ async function calculateDistance () {
     const ctx1 = document.querySelector('#fullBg') // 完成图片
     const ctx2 = document.querySelector('#gapBg')  // 带缺口图片
     console.log(ctx1, 'fuck-ctx1')
-    const pixelDifference = 80; // 像素差
+    const pixelDifference = 30; // 像素差
     let res = []; // 保存像素差较大的x坐标
-    let temp = 0
-    const getPixelInfo = (imageData, x, y) => {
-
-      let R = y * imageData.width * 4 + 4 * x;
-      let G = R + 1;
-      let B = R + 2;
-      let A = R + 3;
-
-      let orderArr = [R, G, B, A];
-      let pixelInfo = {
-        R,
-        G,
-        B,
-        A,
-        orderArr
-      };
-
-      return pixelInfo;
-    }
 
     // 对比像素
     for (let i = 57; i < 260; i++) {
@@ -210,62 +239,19 @@ async function calculateDistance () {
         const imgData2 = ctx2.getContext("2d").getImageData(1 * i, 1 * j, 1, 1)
         const data1 = imgData1.data;
         const data2 = imgData2.data;
-        let pixelArr = getPixelInfo(imgData1, i, j).orderArr;
-        // const res1 = Math.abs(data1[0] - data2[0]);
-        // const res2 = Math.abs(data1[1] - data2[1]);
-        // const res3 = Math.abs(data1[2] - data2[2]);
+        const res1 = Math.abs(data1[0] - data2[0]);
+        const res2 = Math.abs(data1[1] - data2[1]);
+        const res3 = Math.abs(data1[2] - data2[2]);
 
-        // if (!(res1 < pixelDifference && res2 < pixelDifference && res3 < pixelDifference)) {
-        //   // 恒定j值
-        //   if (!res.includes(i)) {
-        //     res.push({ i, j });
-        //   }
-        //   break
-        // }
-        pixelArr.map(order => {
-          let disPixel = imgData1.data[order] - imgData2.data[order];
-          console.log(disPixel, 'fuck res')
-          if (disPixel ** 2 > 100) {
-            res.push({ i, j })
-            console.log(res, 'fuck res')
+        if (!(res1 < pixelDifference)) {
+          // 恒定j值
+          if (!res.includes(i)) {
+            res.push(i);
           }
-        });
-      }
-    }
-    return { min: 1, max: 22 }
-    const dis = []
-    for (let i = res[0].i; i < 260; i++) {
-      const imgData1 = ctx1.getContext("2d").getImageData(1 * i, 1 * res[0].j + 5, 1, 1)
-      const imgData2 = ctx2.getContext("2d").getImageData(1 * i, 1 * res[0].j + 5, 1, 1)
-      const data1 = imgData1.data;
-      const data2 = imgData2.data;
-      const res1 = Math.abs(data1[0] - data2[0]);
-      const res2 = Math.abs(data1[1] - data2[1]);
-      const res3 = Math.abs(data1[2] - data2[2]);
-      orderArr.map(order => {
-        let disPixel = imgData1.data[order] - imgData2.data[order];
-        if (disPixel ** 2 > 100) {
-          dis.push(i)
         }
-      });
-      if (!(res1 < pixelDifference && res2 < pixelDifference && res3 < pixelDifference)) {
-        dis.push(i)
       }
     }
-    console.log
-    // 断档的
-    let min = 0
-    let max = 0
-    console.log(dis, 'dis')
-    for (let k = 0; k < dis.length - 1; k++) {
-      if (dis[k + 1] - dis[k] > 10) {
-        min = dis[k]
-        max = dis[k + 1]
-        break
-      }
-    }
-    // 返回像素差最大值跟最小值，经过调试最小值往左小7像素，最大值往左54像素
-    return { min, max }
+    return { min: res[0] - 7, max: res[res.length - 1] - 54 }
   }, { fullBgBuff, gapBgBuff })
 }
 run()

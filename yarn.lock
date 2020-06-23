@@ -156,6 +156,11 @@ inherits@2, inherits@^2.0.3, inherits@^2.0.4:
   resolved "http://nexus.winning.com.cn:8081/repository/npm-group/inherits/-/inherits-2.0.4.tgz#0fa2c64f932917c3433a0ded55363aae37416b7c"
   integrity sha1-D6LGT5MpF8NDOg3tVTY6rjdBa3w=
 
+lodash@^4.17.15:
+  version "4.17.15"
+  resolved "http://nexus.winning.com.cn:8081/repository/npm-group/lodash/-/lodash-4.17.15.tgz#b447f6670a0455bbfeedd11392eff330ea097548"
+  integrity sha1-tEf2ZwoEVbv+7dETku/zMOoJdUg=
+
 mime@^2.0.3:
   version "2.4.5"
   resolved "http://nexus.winning.com.cn:8081/repository/npm-group/mime/-/mime-2.4.5.tgz#d8de2ecb92982dedbb6541c9b6841d7f218ea009"
