@@ -1,11 +1,12 @@
-const _ = require('lodash')
-const puppeteer = require('puppeteer');
-const config = require('./config.js');
-const fs = require('fs');
+let _ = require('lodash')
+let puppeteer = require('puppeteer');
+let config = require('./config.js');
+let fs = require('fs');
 let page = null
 let btn_position = null
 let times = 0 // 执行重新滑动的次数
-const distanceError = [-10, 2, 3, 5] // 距离误差
+let distanceError = [-10, 2, 3, 5] // 距离误差
+let browser = null
 let timeout = function (delay) {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
@@ -19,7 +20,7 @@ let timeout = function (delay) {
 }
 
 async function run () {
-  const browser = await (puppeteer.launch({
+  browser = await (puppeteer.launch({
     //设置超时时间
     timeout: 15000,
     //如果是访问https页面 此属性会忽略https错误
@@ -35,20 +36,20 @@ async function run () {
 
   })
   await page.waitFor('.login-type')
-  const loginTypeBtn = await page.$('.login-type-ewm .login-type')
+  let loginTypeBtn = await page.$('.login-type-ewm .login-type')
   await loginTypeBtn.click()
   // 输入账号
-  const mobile = await page.$('#mobile')
+  let mobile = await page.$('#mobile')
   mobile.focus()
   await page.keyboard.type(config.loginInfo.mobile)
   // 输入密码
-  const password = await page.$('#passwordHint')
+  let password = await page.$('#passwordHint')
   password.focus()
   await page.keyboard.type(config.loginInfo.password)
   // 获取验证
   await timeout(5000)
-  const sliderBtn = await page.$('.gt_slider_knob')
-  const abc = await page.$('.gt_cut_fullbg')
+  let sliderBtn = await page.$('.gt_slider_knob')
+  let abc = await page.$('.gt_cut_fullbg')
   sliderBtn.hover({ delay: 5000 })
   await timeout(5000)
   await abc.screenshot({ path: 'fullBg.png', type: 'png' })
@@ -58,16 +59,15 @@ async function run () {
   // 获取滑块位置
   btn_position = await getBtnPosition('.gt_slider_knob');
   drag(null)
-  // browser.close();
 }
 
 /**
  * 计算滑块位置
 */
 async function getBtnPosition (id) {
-  const btn_position = await page.evaluate((id) => {
-    const fuck = document.querySelector(id)
-    const fuckRect = fuck.getBoundingClientRect()
+  let btn_position = await page.evaluate((id) => {
+    let fuck = document.querySelector(id)
+    let fuckRect = fuck.getBoundingClientRect()
     return { btn_left: fuckRect.left + 22, btn_top: fuckRect.top + 22 }
   }, id)
   return btn_position;
@@ -78,12 +78,11 @@ async function getBtnPosition (id) {
  * @param distance 滑动距离
  * */
 async function tryValidation (distance) {
-  const reduce = [].reduce
-  const count = 30 // 小编分成30步进行滑动
-  const distance1 = distance - 10
-  const distance2 = 10
-  const steps = slide_list(distance)
-  console.log(steps, 'steps111')
+  let reduce = [].reduce
+  let count = 30 // 小编分成30步进行滑动
+  let distance1 = distance - 10
+  let distance2 = 10
+  let steps = slide_list(distance)
 
   function slide_list (total_length) {
     // '''
@@ -121,7 +120,7 @@ async function tryValidation (distance) {
       // #当前的位置
       current += s
       // #添加到轨迹列表
-      slide_result.push(Math.round(s))
+      slide_result.push(Math.round(s - 1))
 
       // #速度已经达到v,该速度作为下次的初速度
       v = v0 + a * t
@@ -133,24 +132,37 @@ async function tryValidation (distance) {
   page.mouse.down(btn_position.btn_left, btn_position.btn_top)
   console.log('down')
   let path = 0;
-  for (let i = 0; i < steps.length; i++) {
-    path += steps[i]
-    await page.mouse.move(btn_position.btn_left + path, btn_position.btn_top, { steps: 30 })
-    await timeout(800);
-
+  page.mouse.move(btn_position.btn_left + path, btn_position.btn_top, { steps: 30 })
+  function PromiseFactory (path) {
+    return new Promise(async (resolve, reject) => {
+      await page.mouse.move(btn_position.btn_left + path + Math.random(-5, 5), btn_position.btn_top, { steps: 30 })
+      timeout(3000)
+      resolve()
+    })
   }
+  let path2 = 0
+  let stepPromiseList = steps.map(step => {
+    path2 += step
+    return PromiseFactory(path2)
+  })
+  let sequence = Promise.resolve()
+  stepPromiseList.forEach(step => {
+    sequence = sequence.then(step)
+  })
+
   page.mouse.up()
   await timeout(4000);
 
   // 判断是否验证成功
-  const isSuccess = await page.evaluate(() => {
+  let isSuccess = await page.evaluate(() => {
     return document.querySelector('.gt_info_type') && document.querySelector('.gt_info_type').innerHTML
   })
   await timeout(1000);
   // 判断是否需要重新计算距离
-  const reDistance = await page.evaluate(() => {
+  let reDistance = await page.evaluate(() => {
     return document.querySelector('.gt_info_content') && document.querySelector('.gt_info_content').innerHTML
   })
+  console.log(reDistance, 'fuck you')
   await timeout(1000);
   return { isSuccess: isSuccess === '验证成功', reDistance: reDistance.includes('怪物吃了拼图') }
 }
@@ -161,7 +173,7 @@ async function tryValidation (distance) {
  * */
 async function drag (distance) {
   distance = distance || await calculateDistance()
-  const result = await tryValidation(distance.min)
+  let result = await tryValidation(distance.min)
   console.log(result, 'result')
   if (result.isSuccess) {
     await timeout(1000);
@@ -180,6 +192,7 @@ async function drag (distance) {
     } else {
       console.log('滑动失败')
       times = 0
+      browser.close();
       run()
     }
   }
@@ -188,8 +201,8 @@ async function drag (distance) {
  * 计算按钮需要滑动的距离 
  * */
 async function calculateDistance () {
-  const fullBgBuff = Buffer.from(fs.readFileSync('./fullBg.png'), 'binary').toString('base64')
-  const gapBgBuff = Buffer.from(fs.readFileSync('./gapBg.png'), 'binary').toString('base64')
+  let fullBgBuff = Buffer.from(fs.readFileSync('./fullBg.png'), 'binary').toString('base64')
+  let gapBgBuff = Buffer.from(fs.readFileSync('./gapBg.png'), 'binary').toString('base64')
 
   //
   return await page.evaluate(async ({ fullBgBuff, gapBgBuff }) => {
@@ -206,7 +219,7 @@ async function calculateDistance () {
     }
     let fullBgDom = document.createElement('canvas')
     let fullBgCtx = fullBgDom.getContext('2d')
-    const fullBgImage = new Image()
+    let fullBgImage = new Image()
     fullBgDom.setAttribute('id', 'fullBg')
     fullBgImage.src = `data:image/png;base64,${fullBgBuff}`
     fullBgImage.onload = () => {
@@ -226,27 +239,27 @@ async function calculateDistance () {
     document.body.appendChild(gapBgDom)
     await timeout(3000)
     // abc
-    const ctx1 = document.querySelector('#fullBg') // 完成图片
-    const ctx2 = document.querySelector('#gapBg')  // 带缺口图片
+    let ctx1 = document.querySelector('#fullBg') // 完成图片
+    let ctx2 = document.querySelector('#gapBg')  // 带缺口图片
     console.log(ctx1, 'fuck-ctx1')
-    const pixelDifference = 30; // 像素差
+    let pixelDifference = 30; // 像素差
     let res = []; // 保存像素差较大的x坐标
 
     // 对比像素
     for (let i = 57; i < 260; i++) {
       for (let j = 1; j < 160; j++) {
-        const imgData1 = ctx1.getContext("2d").getImageData(1 * i, 1 * j, 1, 1)
-        const imgData2 = ctx2.getContext("2d").getImageData(1 * i, 1 * j, 1, 1)
-        const data1 = imgData1.data;
-        const data2 = imgData2.data;
-        const res1 = Math.abs(data1[0] - data2[0]);
-        const res2 = Math.abs(data1[1] - data2[1]);
-        const res3 = Math.abs(data1[2] - data2[2]);
+        let imgData1 = ctx1.getContext("2d").getImageData(1 * i, 1 * j, 1, 1)
+        let imgData2 = ctx2.getContext("2d").getImageData(1 * i, 1 * j, 1, 1)
+        let data1 = imgData1.data
+        let data2 = imgData2.data
+        let res1 = Math.abs(data1[0] - data2[0])
+        let res2 = Math.abs(data1[1] - data2[1])
+        let res3 = Math.abs(data1[2] - data2[2])
 
         if (!(res1 < pixelDifference)) {
           // 恒定j值
           if (!res.includes(i)) {
-            res.push(i);
+            res.push(i)
           }
         }
       }
